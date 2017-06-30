@@ -2,8 +2,8 @@
 Explore how to use AR-Kit
 
 # Usage
-Development environment: XCode 9 beta, iOS 11 beta.
-Executing devices: iPad pro, iPhone 6s and above (Device with A9X processors)
+Development environment: XCode 9 beta, iOS 11 beta. <br />
+Executing devices: iPad pro, iPhone 6s and above(Device with A9X processors). <br />
 
 # Features:
 1. Enable debug mode: 1. show grid on detected planes 2. Show world origin
