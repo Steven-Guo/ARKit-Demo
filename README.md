@@ -10,5 +10,9 @@ Executing devices: iPad pro, iPhone 6s and above(Device with A9X processors). <b
 2. Single tap on detected grid will drop a cube
 3. Double tap will simulate a force added to the cube (may need configure the params)
 4. Long press on detected plane will place two plants, just for fun.
+5. Swipe up gesture to launch the rocket.
 
-# Have fun playing with iOS :)
+# History
+07/03/2017 - Add a rocket object with particle system, with swipde gesture.
+
+# Have fun :)
