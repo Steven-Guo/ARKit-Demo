@@ -12,10 +12,11 @@ import ARKit
 
 class ViewController: UIViewController {
     
+    // MARK: - Properties
     @IBOutlet var sceneView: ARSCNView!
-    
     fileprivate var planes = [OverlayPlane]()
     
+    // MARK: - View related functions
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -32,15 +33,35 @@ class ViewController: UIViewController {
         scene.rootNode.addChildNode(createBoxContent())
         scene.rootNode.addChildNode(createTextContent())
         scene.rootNode.addChildNode(createSphereContent())
+        scene.rootNode.addChildNode(createMissile())
         
         // Set the scene to the view
         sceneView.scene = scene
         
         // Add tap gesture
-        addTapGesture()
+        addGestures()
     }
     
-    private func addTapGesture() {
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Create a session configuration
+        let configuration = ARWorldTrackingSessionConfiguration()
+        configuration.planeDetection = .horizontal
+        
+        // Run the view's session
+        sceneView.session.run(configuration)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Pause the view's session
+        sceneView.session.pause()
+    }
+    
+    // MARK: - Gestures
+    private func addGestures() {
         // Single Tap Gesture
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(singleTapHandler))
         
@@ -55,9 +76,33 @@ class ViewController: UIViewController {
         let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(longPressHandler))
         longPressGesture.minimumPressDuration = 1.0
         
+        // Swipe gesture
+        let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(swipeHandler))
+        swipeGesture.direction = .up
+        
+        // Add gestures to view
         sceneView.addGestureRecognizer(tapGesture)
         sceneView.addGestureRecognizer(doubleTapGesture)
         sceneView.addGestureRecognizer(longPressGesture)
+        sceneView.addGestureRecognizer(swipeGesture)
+    }
+    
+    @objc func swipeHandler(recognizer: UISwipeGestureRecognizer) {
+        guard let missileNode = sceneView.scene.rootNode.childNode(withName: "missile", recursively: true) else {
+            fatalError("missile is not found")
+        }
+        missileNode.physicsBody = SCNPhysicsBody(type: .dynamic, shape: nil)
+        missileNode.physicsBody?.isAffectedByGravity = false // Just for demo
+        missileNode.physicsBody?.damping = 0.0 // A property that will decrease the speed
+        missileNode.physicsBody?.applyForce(SCNVector3(0, 100, 0), asImpulse: false)
+        
+        // Add fire for launching
+        guard let smokeNode = missileNode.childNode(withName: "smokeNode", recursively: true) else {
+            fatalError("No smoke node is found")
+        }
+        smokeNode.removeAllParticleSystems()
+        let fire = SCNParticleSystem(named: "fire.scnp", inDirectory: nil)
+        smokeNode.addParticleSystem(fire!)
     }
     
     @objc func longPressHandler(recognizer: UILongPressGestureRecognizer) {
@@ -70,15 +115,6 @@ class ViewController: UIViewController {
             print(hitResult.worldTransform.columns.3)
             addPlants(hitResult: hitResult)
         }
-    }
-    
-    private func addPlants(hitResult: ARHitTestResult) {
-        let plantScene = SCNScene(named: "art.scnassets/plants.dae")
-        let plantNode = plantScene?.rootNode.childNode(withName: "SketchUp", recursively: true)
-        plantNode?.position = SCNVector3Make(hitResult.worldTransform.columns.3.x,
-                                             hitResult.worldTransform.columns.3.y,
-                                             hitResult.worldTransform.columns.3.z)
-        sceneView.scene.rootNode.addChildNode(plantNode!)
     }
     
     @objc func doubleTapHandler(recognizer: UITapGestureRecognizer) {
@@ -122,6 +158,16 @@ class ViewController: UIViewController {
          */
     }
     
+    private func addPlants(hitResult: ARHitTestResult) {
+        let plantScene = SCNScene(named: "art.scnassets/plants.dae")
+        let plantNode = plantScene?.rootNode.childNode(withName: "SketchUp", recursively: true)
+        plantNode?.position = SCNVector3Make(hitResult.worldTransform.columns.3.x,
+                                             hitResult.worldTransform.columns.3.y,
+                                             hitResult.worldTransform.columns.3.z)
+        sceneView.scene.rootNode.addChildNode(plantNode!)
+    }
+    
+    // MARK: - Create Objects
     private func createDropOffBox(_ hitResult: ARHitTestResult) {
         let offSet: Float = 0.5
         
@@ -141,24 +187,6 @@ class ViewController: UIViewController {
                                           hitResult.worldTransform.columns.3.y + offSet,
                                           hitResult.worldTransform.columns.3.z)
         sceneView.scene.rootNode.addChildNode(boxNode)
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        
-        // Create a session configuration
-        let configuration = ARWorldTrackingSessionConfiguration()
-        configuration.planeDetection = .horizontal
-        
-        // Run the view's session
-        sceneView.session.run(configuration)
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        
-        // Pause the view's session
-        sceneView.session.pause()
     }
     
     fileprivate func createSphereContent() -> SCNNode {
@@ -211,8 +239,17 @@ class ViewController: UIViewController {
         
         return textNode
     }
+    
+    fileprivate func createMissile() -> SCNNode {
+        let missileScene = SCNScene(named: "art.scnassets/missile.scn")
+        let missile = Missile(scene: missileScene!)
+        missile.name = "missile"
+        missile.position = SCNVector3Make(-3, 0, -10)
+        return missile
+    }
 }
 
+// MARK: - Scene view delegate
 extension ViewController: ARSCNViewDelegate {
     // When ARKit found a plane, this delegate will be called
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
